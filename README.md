@@ -3,7 +3,7 @@
 This repo for fMRI image interpretation
 Todo:
 - Implement SpaceNet on Haxby
-- 3D Grad-CAM (developed by fitushar)
+- 3D Grad-CAM 
 - Try Deep Lasso
 - Try CNN
 - Pretrain deep model with contrastive learning by recon (Probably we can use fMRI+image CLIP/ MAE/ Swap)
