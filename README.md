@@ -19,10 +19,10 @@ fMRI--> Model --> Feature Regression <-- Generated Features <-- Pretrained Model
 
 
 
-* Todo:
+<!-- * Todo:
     - Implement SpaceNet on Haxby
     - 3D Grad-CAM 
     - Try Deep Lasso
     - Try CNN
-    - Pretrain deep model with contrastive learning by recon (Probably we can use fMRI+image CLIP/ MAE/ Swap)
+    - Pretrain deep model with contrastive learning by recon (Probably we can use fMRI+image CLIP/ MAE/ Swap) -->
 
