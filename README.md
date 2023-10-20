@@ -2,6 +2,7 @@
 
 This repo for fMRI image interpretation
 * Intro to Haxby dataset: [Here](https://main-educational.github.io/brain_encoding_decoding/haxby_data.html)
+* NSD data manual: [Here](https://cvnlab.slite.page/p/CT9Fwl4_hc/NSD-Data-Manual)
 
 Framework: 
 
