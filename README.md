@@ -6,12 +6,13 @@ This repo for fMRI image interpretation
 
 Framework: 
 
-fMRI--> Model --> Feature Regression <-- Generated Features <-- Pretrained Model <-- Stimulus
-* 1016 TODO:
-    - Extracting features from stimulus with pretrained model(ViT/ResNet50/...)
-        - Figure out with layer of the pretrained model to extract features
-        - Apply PCA on extracted features and get 1st coefficient
-        - Figure out what the 1st coefficient stands for (e.g. direction of the chair)
+1. fMRI--> Model --> Feature Regression <-- Generated Features <-- Pretrained Model <-- Stimulus
+2. 
+* 1023 TODO:
+    - Load MindEye's model [here](https://huggingface.co/datasets/pscotti/naturalscenesdataset/tree/main)
+        - check its gradient contribution to image reconstruction
+        - Generate gradient contibution map on fMRI image
+        - Fuse gradient contribution map from 4 subjects by using [2nd level analysis](https://nilearn.github.io/stable/auto_examples/05_glm_second_level/plot_thresholding.html#)
     - NSD dataset Dataloader
         - Figure out how to load NSD dataset
         - Figure out how to load stimulus
@@ -19,6 +20,11 @@ fMRI--> Model --> Feature Regression <-- Generated Features <-- Pretrained Model
     - Implement (Deep Lasso/ MLP/ SpaceNet/ FREM) for our new framework
         - Dataloader/ Model/ Loss/ Optimizer/ Training loop
         - Get corresponding brain region for each feature
+    - Extracting features from stimulus with pretrained model(ViT/ResNet50/...)
+        - Figure out with layer of the pretrained model to extract features
+        - Apply PCA on extracted features and get 1st coefficient
+        - Figure out what the 1st coefficient stands for (e.g. main component of the image)
+
 
 
 
