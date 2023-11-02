@@ -13,10 +13,12 @@ Framework:
         - check its gradient contribution to image reconstruction
         - Generate gradient contibution map on fMRI image
         - Fuse gradient contribution map from 4 subjects by using [2nd level analysis](https://nilearn.github.io/stable/auto_examples/05_glm_second_level/plot_thresholding.html#)
-    - NSD dataset Dataloader
-        - Figure out how to load NSD dataset
-        - Figure out how to load stimulus
-        - Figure out how to load fMRI data and which to use
+    - NSD dataset Dataloader [updated 1102]
+        TODO:
+        1. Load the 3D fMRI data (Used for fMRI decoder)
+        2. Load paired stimuli image (Used for feature extraction)
+        3. Load annotation/ categorie for images
+
     - Implement (Deep Lasso/ MLP/ SpaceNet/ FREM) for our new framework
         - Dataloader/ Model/ Loss/ Optimizer/ Training loop
         - Get corresponding brain region for each feature
