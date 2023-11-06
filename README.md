@@ -20,7 +20,7 @@ Framework:
         - Apply PCA on extracted features and get 1st coefficient
         - Figure out what the 1st coefficient stands for (e.g. main component of the image)
 
-Done:
+* Done:
     - NSD dataset Dataloader (Done) {we could use webdataset from Mindeye directly}
         1. Load the 3D fMRI data (Used for fMRI decoder)
         2. Load paired stimuli image (Used for feature extraction)
