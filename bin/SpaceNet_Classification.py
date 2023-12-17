@@ -16,7 +16,9 @@ import argparse
 import h5py
 import pickle
 import pandas as pd
+import seaborn as sns
 
+DEBUG = False
 
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 sys.path.append('/scratch/ne2213/projects/tmp_packages')
@@ -32,6 +34,7 @@ parser.add_argument('--beta_root', type=str, default="/scratch/cl6707/Projects/n
 parser.add_argument('--mask_root', type=str, default="/scratch/cl6707/Projects/neuro_interp/data/NSD/nsddata/ppdata/", help='path to masks')
 parser.add_argument('--subj', type=int, default=1, help='subject number')
 parser.add_argument('--mask_id', type=int, default=0, help='mask id')
+parser.add_argument('--output_dir', type=str, default="/scratch/cl6707/Projects/neuro_interp/Neural_Interpretation/notebooks/output/brain_decoding/", help='output directory')
 args = parser.parse_args()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -153,7 +156,7 @@ def plot_roc_curve(y_true, y_pred, unique_things, title,save_path = None):
     if save_path is not None:
         fig.write_image(save_path)
     # Show the figure
-    fig.show()
+    # fig.show()
 
 def plot_confusion_matrix(y_true, y_pred, labels, title,save_path = None):
     cm = confusion_matrix(y_true, y_pred)
@@ -165,7 +168,7 @@ def plot_confusion_matrix(y_true, y_pred, labels, title,save_path = None):
     plt.title(title)
     if save_path is not None:
         plt.savefig(save_path)
-    plt.show()   
+    # plt.show()   
 
 def reconstruct_volume_corrected(vol_shape, binary_mask, data_vol, order='C'):
     
@@ -243,15 +246,20 @@ if __name__ == '__main__':
         memory_level=2,
         standardize="zscore_sample",
      )
-    
-    print('Fitting model...')
-    model.fit(X_train_all, y_train_all)
-    
+    if DEBUG:
+        print('DEBUG MODE')
+        model.fit(X_train_all[:100], y_train_all[:100])
+        X_val_all = X_val_all[:100]
+        y_val_all = y_val_all[:100]
+    else:
+        print('Fitting model...')
+        model.fit(X_train_all, y_train_all)
+        
     # Save model
     print('Saving model...')
     model_name = f'SpaceNet_Classifier_subj{args.subj}_mask_{list(masks.keys())[args.mask_id]}_{args.mask_id}.pkl'
-    model.save(model_name)
-    pickle.dump(model, open(model_name, 'wb'))
+
+    pickle.dump(model, open(os.path.join(args.output_dir,model_name), 'wb'))
     
     print('EVALUATING MODEL...')
     print('Predicting...')
@@ -277,12 +285,12 @@ if __name__ == '__main__':
     print('Precision test:', precision_test)
     print('Precision train:', precision_train)
     df_metric = pd.DataFrame({'accuracy':[accuracy_test, accuracy_train], 'f1':[f1_test, f1_train], 'recall':[recall_test, recall_train], 'precision':[precision_test, precision_train]}, index=['test', 'train'])
-    df_metric.to_csv(f'output/brain_decoding/metrics_{model_name}.csv')
+    df_metric.to_csv(os.path.join(args.output_dir,f'metrics_{model_name}.csv'))
     
-    plot_confusion_matrix(y_val_all, y_pred_test, unique_things, title=f'Confusion Matrix Test Accuracy: {accuracy_test:.2f}', save_path=f'output/brain_decoding/confusion_matrix_test_{model_name}.png')
-    plot_confusion_matrix(y_train_all, y_pred_train, unique_things, title=f'Confusion Matrix Train Accuracy: {accuracy_train:.2f}', save_path=f'output/brain_decoding/confusion_matrix_train_{model_name}.png')
-    plot_roc_curve(y_val_all, y_pred_test, unique_things, title=f'ROC Curve Test Accuracy: {accuracy_test:.2f}', save_path=f'output/brain_decoding/roc_curve_test_{model_name}.png')
-    plot_roc_curve(y_train_all, y_pred_train, unique_things, title=f'ROC Curve Train Accuracy: {accuracy_train:.2f}', save_path=f'output/brain_decoding/roc_curve_train_{model_name}.png')
+    plot_confusion_matrix(y_val_all, y_pred_test, unique_things, title=f'Confusion Matrix Test Accuracy: {accuracy_test:.2f}', save_path=os.path.join(args.output_dir,f'confusion_matrix_test_{model_name}.png'))
+    plot_confusion_matrix(y_train_all, y_pred_train, unique_things, title=f'Confusion Matrix Train Accuracy: {accuracy_train:.2f}', save_path=os.path.join(args.output_dir,f'confusion_matrix_train_{model_name}.png'))
+    plot_roc_curve(y_val_all, y_pred_test, unique_things, title=f'ROC Curve Test Accuracy: {accuracy_test:.2f}', save_path=os.path.join(args.output_dir,f'roc_curve_test_{model_name}.png'))
+    plot_roc_curve(y_train_all, y_pred_train, unique_things, title=f'ROC Curve Train Accuracy: {accuracy_train:.2f}', save_path=os.path.join(args.output_dir,f'roc_curve_train_{model_name}.png'))
     
     print('Done!')
     

@@ -21,11 +21,6 @@ import wandb
 from nilearn.plotting import plot_stat_map
 
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
-sys.path.append('/scratch/ne2213/projects/tmp_packages')
-sys.path.append('/scratch/ne2213/projects/tmp_packages/')
-sys.path.append('/scratch/cl6707/Projects/neuro_interp/data/NSD/nsd')
-
-
 # Convert to argparse
 parser = argparse.ArgumentParser(description='SpaceNet Classification')
 parser.add_argument('--datapath', type=str, default="/scratch/cl6707/Shared_Datasets/NSD_MindEye", help='path to NSD_MindEye')
@@ -48,7 +43,7 @@ print("device:",device)
 seed=42
 utils.seed_everything(seed=seed)
 
-DEBUG = False
+DEBUG = True
 # voxel_roi_full  = load_mask_from_nii(args.mask_root + "subj%02d/func1pt8mm/roi/prf-visualrois.nii.gz"%subj)
 
 if args.subj == 1:
@@ -106,7 +101,7 @@ train_dl, val_dl, num_train, num_val = utils.get_dataloaders(
     meta_url=meta_url,
     num_train=num_train,
     num_val=num_val,
-    val_batch_size=1,
+    val_batch_size=32,
     cache_dir=args.datapath, #"/tmp/wds-cache",
     seed=seed,
     voxels_key='nsdgeneral.npy', # 'nsdgeneral.npy' (1d), 'wholebrain_3d.npy'(3d)
@@ -153,7 +148,7 @@ def reconstruct_volume_corrected(vol_shape, binary_mask, data_vol, order='C'):
 
 @torch.no_grad()
 def get_guse(annotation,mode='max'):
-    B = annotation.shape[0]
+    B = len(annotation)
     annot_embed_all = np.zeros((B,512))
     if mode == 'max':
         for b in range(B):
@@ -205,6 +200,7 @@ class LinearModel(nn.Module):
         return self.l1_ratio * tv_norm + (1 - self.l1_ratio) * l1_norm
         
 if __name__ == '__main__':
+    print('SAVING TO:',args.output_dir)
     wandb.init(project="neuro_interp", 
                mode = 'disabled' if DEBUG else 'online',
                name=f"subj{args.subj}_linear_model_mask_{args.load_mask}_id{args.mask_id}_tvl1weight{args.tvl1_weight}_guse",
@@ -268,41 +264,42 @@ if __name__ == '__main__':
         wandb.log({"train_pcc": np.mean(pcc_all)})
         print('Train PCC:',np.mean(pcc_all))
 
-    loss_dict_val = {'tv_l1':[],
-                    'mse':[]
-                    }
-    pcc_list_val = []
+        loss_dict_val = {'tv_l1':[],
+                        'mse':[]
+                        }
+        pcc_list_val = []
 
-    model.eval()
-    for voxels, images, coco, trial in val_dl:
-        voxels = voxels.float().to(device)
-        voxels = voxels.mean(axis=1)
-        voxels = voxels*mask
-        guse_embed = get_guse(annotation_all[trial])
-        outputs = model(voxels)
-        tv_l1 = model.tv_l1_regularization()
-        mse = criterion(outputs, guse_embed)
-        loss_dict_val['tv_l1'].append(tv_l1.item())
-        loss_dict_val['mse'].append(mse.item())
-        loss = mse + args.tvl1_weight*tv_l1
-        wandb.log({"val_loss": loss.item(),
-                   'val_mse':mse.item(),
-                      'val_tv_l1':tv_l1.item()*args.tvl1_weight,
-                   })
-        # calculte PCC between outputs and guse_embed
-        pcc = [pearsonr(outputs[i].detach().cpu().numpy(), guse_embed[i].detach().cpu().numpy(),)[0] for i in range(len(outputs))]
-        pcc_list_val += pcc
-    wandb.log({"val_pcc": np.mean(pcc_list_val)})
-    print('Val PCC:',np.mean(pcc_list_val))
-    # save model
-    torch.save(model.state_dict(), os.path.join(args.output_dir+'subj%02d_linear_model.pt'%args.subj))
+        model.eval()
+        for voxels, images, coco, trial in val_dl:
+            voxels = voxels.float().to(device)
+            voxels = voxels.mean(axis=1)
+            voxels = voxels*mask
+            guse_embed = get_guse(annotation_all[trial])
+            outputs = model(voxels)
+            tv_l1 = model.tv_l1_regularization()
+            mse = criterion(outputs, guse_embed)
+            loss_dict_val['tv_l1'].append(tv_l1.item())
+            loss_dict_val['mse'].append(mse.item())
+            loss = mse + args.tvl1_weight*tv_l1
+            wandb.log({"val_loss": loss.item(),
+                    'val_mse':mse.item(),
+                        'val_tv_l1':tv_l1.item()*args.tvl1_weight,
+                    })
+            # calculte PCC between outputs and guse_embed
+            pcc = [pearsonr(outputs[i].detach().cpu().numpy(), guse_embed[i].detach().cpu().numpy(),)[0] for i in range(len(outputs))]
+            pcc_list_val += pcc
+        wandb.log({"val_pcc": np.mean(pcc_list_val)})
+        print('Val PCC:',np.mean(pcc_list_val))
+        # save model
+        if epoch%3==0:
+            torch.save(model.state_dict(), os.path.join(args.output_dir,'subj%02d_linear_model_epoch%02d.pt'%(args.subj,epoch)))
+    torch.save(model.state_dict(), os.path.join(args.output_dir,'subj%02d_linear_model.pt'%args.subj))
     weights = model.linear.weight.detach().cpu().numpy()
     weights = weights.mean(axis=0)
     voxel_weight = weights
     reconstructed_weight = reconstruct_volume_corrected(nsdgeneral_roi_mask.shape, nsdgeneral_roi_mask.flatten(), voxel_weight)
     reconstructed_weight = np.nan_to_num(reconstructed_weight)
     ni_img = nib.Nifti1Image(reconstructed_weight,affine=nsdgeneral_affine)
-    plot_stat_map(ni_img, bg_img=anat_img, threshold=0.0, display_mode='z', cut_coords=10, colorbar=True, vmax=0.1)
-    plt.savefig(os.path.join(args.output_dir,'/output/subj%02d_linear_model.png'%args.subj))
+    plot_stat_map(ni_img, bg_img=anat_img, threshold=0.0, display_mode='z', cut_coords=10, colorbar=True, vmax=0.1, output_file=os.path.join(args.output_dir,'/output/subj%02d_linear_model.png'%args.subj))
     
     wandb.finish()
