@@ -35,6 +35,7 @@ parser.add_argument('--tvl1_weight', type=float, default=1e-3, help='tv l1 weigh
 parser.add_argument('--epoch_num', type=int, default=10, help='epoch number')
 parser.add_argument('--text_embed', type=str, default='guse', help='text embedding method')
 parser.add_argument('--output_dir', type=str, default='./output', help='output directory')
+parser.add_argument('--mask_path', type=str, default='/scratch/cl6707/Projects/neuro_interp/Neural_Interpretation/notebooks/output/brain_decoding/masks.h5', help='mask path')
 args = parser.parse_args()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -159,6 +160,7 @@ def get_guse(annotation,mode='max'):
     elif mode == 'mean':
         for b in range(B):
             annot_embed = guse(annotation[b][0]).cpu().numpy()
+            
             annot_embed_all[b] = annot_embed.mean(axis=0)
     else:
         raise NotImplementedError
@@ -209,15 +211,15 @@ if __name__ == '__main__':
     mask = None
     affine = None
     if args.load_mask:
+        print('Loading mask from:',args.mask_path)
         masks = {}
-        with h5py.File('/scratch/cl6707/Projects/neuro_interp/Neural_Interpretation/notebooks/output/brain_decoding/masks.h5', 'r') as hf:
+        with h5py.File(args.mask_path, 'r') as hf:
             for key in hf.keys():
                 masks[key] = hf[key][:]
-
         mask = masks[list(masks.keys())[args.mask_id]]
         nsdgeneral1d = nsdgeneral_roi_mask.flatten()
         mask = torch.tensor(mask.flatten()[nsdgeneral1d!=0]).to(device).float()
-        print('num voxels:',len(mask))
+        print('num voxels:',mask.sum())
     else:
         mask = nsdgeneral_roi_mask
         mask = torch.tensor(mask[mask!=0].flatten()).to(device).float()
@@ -290,9 +292,6 @@ if __name__ == '__main__':
             pcc_list_val += pcc
         wandb.log({"val_pcc": np.mean(pcc_list_val)})
         print('Val PCC:',np.mean(pcc_list_val))
-        # save model
-        if epoch%3==0:
-            torch.save(model.state_dict(), os.path.join(args.output_dir,'subj%02d_linear_model_epoch%02d.pt'%(args.subj,epoch)))
     torch.save(model.state_dict(), os.path.join(args.output_dir,'subj%02d_linear_model.pt'%args.subj))
     weights = model.linear.weight.detach().cpu().numpy()
     weights = weights.mean(axis=0)
@@ -300,6 +299,6 @@ if __name__ == '__main__':
     reconstructed_weight = reconstruct_volume_corrected(nsdgeneral_roi_mask.shape, nsdgeneral_roi_mask.flatten(), voxel_weight)
     reconstructed_weight = np.nan_to_num(reconstructed_weight)
     ni_img = nib.Nifti1Image(reconstructed_weight,affine=nsdgeneral_affine)
-    plot_stat_map(ni_img, bg_img=anat_img, threshold=0.0, display_mode='z', cut_coords=10, colorbar=True, vmax=0.1, output_file=os.path.join(args.output_dir,'/output/subj%02d_linear_model.png'%args.subj))
+    plot_stat_map(ni_img, bg_img=anat_img, threshold=0.0, display_mode='z', cut_coords=10, colorbar=True, vmax=0.1, output_file=os.path.join(args.output_dir,'/subj%02d_linear_model.png'%args.subj))
     
     wandb.finish()

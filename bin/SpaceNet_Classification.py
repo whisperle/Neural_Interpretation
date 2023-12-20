@@ -33,8 +33,10 @@ parser.add_argument('--stim_root', type=str, default="/scratch/cl6707/Projects/n
 parser.add_argument('--beta_root', type=str, default="/scratch/cl6707/Projects/neuro_interp/data/NSD/nsddata_betas/ppdata/", help='path to betas')
 parser.add_argument('--mask_root', type=str, default="/scratch/cl6707/Projects/neuro_interp/data/NSD/nsddata/ppdata/", help='path to masks')
 parser.add_argument('--subj', type=int, default=1, help='subject number')
+parser.add_argument('--load_mask', type=int, default=0, help='load mask')
 parser.add_argument('--mask_id', type=int, default=0, help='mask id')
 parser.add_argument('--output_dir', type=str, default="/scratch/cl6707/Projects/neuro_interp/Neural_Interpretation/notebooks/output/brain_decoding/", help='output directory')
+parser.add_argument('--mask_path',type=str, default="/scratch/cl6707/Projects/neuro_interp/Neural_Interpretation/notebooks/output/brain_decoding/masks.h5", help='path to masks')
 args = parser.parse_args()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -198,7 +200,9 @@ if __name__ == '__main__':
 
     train_iter = iter(train_dl)
     test_iter = iter(val_dl)
-
+    if DEBUG:
+        num_train = 100
+        num_val = 100
     for i in tqdm(range(num_train)):
         voxels, _, _, trial = next(train_iter)
         voxels = voxels[0].cpu().numpy().mean(axis=0)
@@ -230,14 +234,19 @@ if __name__ == '__main__':
     print('TRAINING MODEL...')
     # Loading Mask
     masks = {}
-    affine = None
-    with h5py.File('/scratch/cl6707/Projects/neuro_interp/Neural_Interpretation/notebooks/output/brain_decoding/masks.h5', 'r') as hf:
-        for key in hf.keys():
-            masks[key] = nib.Nifti1Image(hf[key][:], nsdgeneral_affine)
-    
-    mask = masks[list(masks.keys())[args.mask_id]]
-    print('Mask:', list(masks.keys())[args.mask_id])
-    
+    if args.load_mask:
+        print('Loading mask from:',args.mask_path)
+        masks = {}
+        with h5py.File(args.mask_path, 'r') as hf:
+            for key in hf.keys():
+                masks[key] = hf[key][:]
+        mask = nib.Nifti1Image(masks[list(masks.keys())[args.mask_id]],nsdgeneral_affine)
+        print('num voxels:',mask.get_fdata().sum())
+    else:
+        mask = nsdgeneral
+        print('Using nsdgeneral mask')
+        print('num voxels:',mask.get_fdata().sum())
+        
     model = SpaceNetClassifier(
         mask=mask,
         memory = 'nilearn_cache',
@@ -246,14 +255,9 @@ if __name__ == '__main__':
         memory_level=2,
         standardize="zscore_sample",
      )
-    if DEBUG:
-        print('DEBUG MODE')
-        model.fit(X_train_all[:100], y_train_all[:100])
-        X_val_all = X_val_all[:100]
-        y_val_all = y_val_all[:100]
-    else:
-        print('Fitting model...')
-        model.fit(X_train_all, y_train_all)
+    
+    print('Fitting model...')
+    model.fit(X_train_all, y_train_all)
         
     # Save model
     print('Saving model...')
