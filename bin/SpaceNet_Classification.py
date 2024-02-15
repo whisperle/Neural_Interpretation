@@ -181,11 +181,11 @@ def reconstruct_volume_corrected(vol_shape, binary_mask, data_vol, order='C'):
     view_vol[idx_mask] = data_vol
     return np.nan_to_num(view_vol.reshape(vol_shape, order=order))
 
-nsdgeneral_affine = nib.load('/scratch/cl6707/Projects/neuro_interp/data/NSD/nsddata/ppdata/subj01/func1pt8mm/roi/nsdgeneral.nii.gz').affine
-nsdgeneral =  nib.load('/scratch/cl6707/Projects/neuro_interp/data/NSD/nsddata/ppdata/subj01/func1pt8mm/roi/nsdgeneral.nii.gz')
+nsdgeneral_affine = nib.load(f'/scratch/cl6707/Projects/neuro_interp/data/NSD/nsddata/ppdata/subj0{args.subj}/func1pt8mm/roi/nsdgeneral.nii.gz').affine
+nsdgeneral =  nib.load(f'/scratch/cl6707/Projects/neuro_interp/data/NSD/nsddata/ppdata/subj0{args.subj}/func1pt8mm/roi/nsdgeneral.nii.gz')
 nsdgeneral_roi_mask = (nsdgeneral.get_fdata()==1).astype(np.float32)
 nsdgeneral = nib.Nifti1Image(nsdgeneral_roi_mask, nsdgeneral_affine)
-anat_img = '/scratch/cl6707/Projects/neuro_interp/data/NSD/nsddata/ppdata/subj01/func1pt8mm/T1_to_func1pt8mm.nii.gz'
+anat_img = f'/scratch/cl6707/Projects/neuro_interp/data/NSD/nsddata/ppdata/subj0{args.subj}/func1pt8mm/T1_to_func1pt8mm.nii.gz'
 
 
 
@@ -260,10 +260,10 @@ if __name__ == '__main__':
     model.fit(X_train_all, y_train_all)
         
     # Save model
-    print('Saving model...')
+    # print('Saving model...')
     model_name = f'SpaceNet_Classifier_subj{args.subj}_mask_{list(masks.keys())[args.mask_id]}_{args.mask_id}.pkl'
 
-    pickle.dump(model, open(os.path.join(args.output_dir,model_name), 'wb'))
+    # pickle.dump(model, open(os.path.join(args.output_dir,model_name), 'wb'))
     
     print('EVALUATING MODEL...')
     print('Predicting...')

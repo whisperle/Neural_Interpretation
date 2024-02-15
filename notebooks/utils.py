@@ -236,6 +236,7 @@ def get_dataloaders(
     local_rank=0,
     world_size=1,
     subj=1,
+    reloading=False
 ):
     print("Getting dataloaders...")
     assert image_var == 'images'
@@ -309,14 +310,23 @@ def get_dataloaders(
     print("num_worker_batches", num_worker_batches)
     
     # train_url = train_url[local_rank:world_size]
-    train_data = wds.WebDataset(train_url, resampled=True, cache_dir=cache_dir, nodesplitter=my_split_by_node)\
-        .shuffle(500, initial=500, rng=random.Random(42))\
-        .decode("torch")\
-        .rename(images="jpg;png", voxels=voxels_key, trial="trial.npy", coco="coco73k.npy", reps="num_uniques.npy")\
-        .to_tuple(*to_tuple)\
-        .batched(batch_size, partial=True)\
-        .with_epoch(num_worker_batches)
-    
+    if reloading:
+        print("Reloading Training data without shuffling!")
+        train_data = wds.WebDataset(train_url, resampled=True, cache_dir=cache_dir, nodesplitter=my_split_by_node)\
+            .decode("torch")\
+            .rename(images="jpg;png", voxels=voxels_key, trial="trial.npy", coco="coco73k.npy", reps="num_uniques.npy")\
+            .to_tuple(*to_tuple)\
+            .batched(batch_size, partial=True)\
+            .with_epoch(num_worker_batches)
+    else:    
+        train_data = wds.WebDataset(train_url, resampled=True, cache_dir=cache_dir, nodesplitter=my_split_by_node)\
+            .shuffle(500, initial=500, rng=random.Random(42))\
+            .decode("torch")\
+            .rename(images="jpg;png", voxels=voxels_key, trial="trial.npy", coco="coco73k.npy", reps="num_uniques.npy")\
+            .to_tuple(*to_tuple)\
+            .batched(batch_size, partial=True)\
+            .with_epoch(num_worker_batches)
+        
     train_dl = torch.utils.data.DataLoader(train_data, batch_size=None, num_workers=1, shuffle=False)
 
     # Validation 
